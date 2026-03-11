@@ -39,7 +39,6 @@ class GmailFetcher:
 
     def authenticate(self):
         import os
-        import json
         import tempfile
         try:
             from google.oauth2.credentials import Credentials
@@ -51,41 +50,59 @@ class GmailFetcher:
 
         SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
         creds = None
-        token_path = os.path.join(tempfile.gettempdir(), "token.json")
 
-        # 1. Try loading token from temp path (written by secrets_helper)
+        # Step 1 — Always try to load from secrets first (cloud + local)
+        # This writes credentials.json and token.json to /tmp
+        try:
+            from ingestion.secrets_helper import get_gmail_credential_paths
+            _, token_path = get_gmail_credential_paths()
+        except Exception:
+            # Fallback to instance token_path if secrets_helper fails
+            token_path = self.token_path
+
+        # Step 2 — Load token from the path secrets_helper just wrote
         if os.path.exists(token_path):
-            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            try:
+                creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            except Exception:
+                creds = None
 
-        # 2. If token is expired but has refresh token — refresh silently
+        # Step 3 — Refresh if expired
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-                # Save refreshed token back to temp path
                 with open(token_path, "w") as f:
                     f.write(creds.to_json())
-            except Exception as e:
+            except Exception:
                 creds = None
 
-        # 3. If no valid creds — refresh if possible, otherwise fail gracefully
+        # Step 4 — If still no valid creds, check if on cloud or local
         if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                try:
-                    creds.refresh(Request())
-                    with open(token_path, "w") as f:
-                        f.write(creds.to_json())
-                except Exception:
-                    creds = None
+            # Detect Streamlit Cloud (no display/browser available)
+            is_cloud = os.environ.get("HOME", "") == "/home/adminuser"
 
-        if not creds or not creds.valid:
-            # On Streamlit Cloud — never open browser, fail gracefully
-            import streamlit as st
-            st.error("""
-                ❌ Gmail token missing or expired in Streamlit Secrets.
-                Fix: Run app locally → connect Gmail → copy fresh token.json 
-                → paste into Streamlit Cloud Secrets → token_json field → Save.
-            """)
-            st.stop()
+            if is_cloud:
+                import streamlit as st
+                st.error("""
+                    ❌ Gmail token missing or expired in Streamlit Secrets.
+                    
+                    Fix steps:
+                    1. Run the app locally: streamlit run ui/app.py
+                    2. Connect Gmail in the Threat Monitoring tab
+                    3. Open the generated token.json from your project root
+                    4. Copy ALL contents
+                    5. Go to Streamlit Cloud → App Settings → Secrets
+                    6. Replace the token_json value with the copied content
+                    7. Click Save — app will restart automatically
+                """)
+                st.stop()
+            else:
+                # Local — safe to open browser for OAuth
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    self.credentials_path, SCOPES)
+                creds = flow.run_local_server(port=0)
+                with open(token_path, "w") as f:
+                    f.write(creds.to_json())
 
         self.service = build("gmail", "v1", credentials=creds)
         self.creds = creds

@@ -1,0 +1,57 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Packages
+*.egg
+*.egg-info/
+dist/
+build/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.history/
+
+# Streamlit config (if you want to keep config.toml but ignore others)
+#.streamlit/
+#!.streamlit/config.toml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Project specific data and credentials
+credentials.json
+gmail_credentials.json
+client_secret*.json
+*.eml
+*.log
+*.csv
+*.parquet
+*.db
+*.sqlite3
+
+# Models and checkpoints
+*.pkl
+*.h5
+*.model
+*.pt
+*.pth
+models/
+checkpoints/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/

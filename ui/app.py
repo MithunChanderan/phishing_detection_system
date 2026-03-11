@@ -367,7 +367,10 @@ with tabs[2]:
         </ol></div>""", unsafe_allow_html=True)
         
         # Detect if running on Streamlit Cloud
-        is_cloud = "gmail_credentials" in st.secrets if hasattr(st, "secrets") else False
+        try:
+            is_cloud = "gmail_credentials" in st.secrets
+        except Exception:
+            is_cloud = False
 
         if is_cloud:
             st.markdown(f"""

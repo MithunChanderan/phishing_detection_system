@@ -1,0 +1,12 @@
+From: "PayPal Support" <alert@fake-paypal.com>
+To: user@example.com
+Subject: Urgent: Account Suspended
+Return-Path: <spoof@attacker.com>
+Authentication-Results: spf=fail smtp.mailfrom=attacker.com
+
+Dear User,
+
+Your account has been suspended.
+Click immediately to restore access.
+
+http://bit.ly/fake-login

@@ -1,0 +1,27 @@
+# Core
+streamlit
+textblob
+nltk
+tldextract
+matplotlib
+
+# ML Detection
+scikit-learn
+joblib
+numpy
+
+# UI / Charts
+plotly
+streamlit-option-menu
+
+# Threat Intelligence
+python-whois
+requests
+
+# Reports
+fpdf2
+
+# Gmail Integration (optional)
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib

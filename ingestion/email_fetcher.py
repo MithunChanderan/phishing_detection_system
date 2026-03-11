@@ -67,36 +67,25 @@ class GmailFetcher:
             except Exception as e:
                 creds = None
 
-        # 3. If no valid creds and running on Streamlit Cloud — FAIL GRACEFULLY
-        #    Never attempt browser OAuth flow on server
+        # 3. If no valid creds — refresh if possible, otherwise fail gracefully
         if not creds or not creds.valid:
-            try:
-                import streamlit as st
-                is_cloud = "gmail_credentials" in st.secrets if hasattr(st, "secrets") else False
-            except Exception:
-                is_cloud = False
+            if creds and creds.expired and creds.refresh_token:
+                try:
+                    creds.refresh(Request())
+                    with open(token_path, "w") as f:
+                        f.write(creds.to_json())
+                except Exception:
+                    creds = None
 
-            if is_cloud:
-                import streamlit as st
-                st.error("""
-                    ❌ Gmail authentication failed on Streamlit Cloud.
-                    Your token.json in Secrets is missing or expired.
-                    Steps to fix:
-                    1. Run the app locally and connect Gmail once
-                    2. Copy the fresh token.json contents
-                    3. Paste into Streamlit Cloud → App Settings → Secrets → token_json
-                    4. Save and reboot the app
-                """)
-                st.stop()
-            else:
-                # Local only — safe to open browser
-                if not os.path.exists(self.credentials_path):
-                    return False
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    self.credentials_path, SCOPES)
-                creds = flow.run_local_server(port=0)
-                with open(token_path, "w") as f:
-                    f.write(creds.to_json())
+        if not creds or not creds.valid:
+            # On Streamlit Cloud — never open browser, fail gracefully
+            import streamlit as st
+            st.error("""
+                ❌ Gmail token missing or expired in Streamlit Secrets.
+                Fix: Run app locally → connect Gmail → copy fresh token.json 
+                → paste into Streamlit Cloud Secrets → token_json field → Save.
+            """)
+            st.stop()
 
         self.service = build("gmail", "v1", credentials=creds)
         self.creds = creds

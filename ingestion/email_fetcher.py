@@ -27,6 +27,12 @@ class GmailFetcher:
         self.token_path = token_path
         self.service = None
 
+    @classmethod
+    def from_secrets(cls):
+        from ingestion.secrets_helper import get_gmail_credential_paths
+        credentials_path, token_path = get_gmail_credential_paths()
+        return cls(credentials_path=credentials_path, token_path=token_path)
+
     # ------------------------------------------------------------------ #
     #  Authentication
     # ------------------------------------------------------------------ #
@@ -53,6 +59,10 @@ class GmailFetcher:
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
+                import tempfile
+                token_path = os.path.join(tempfile.gettempdir(), "token.json")
+                with open(token_path, "w") as f:
+                    f.write(creds.to_json())
             else:
                 if not os.path.exists(self.credentials_path):
                     return False

@@ -32,11 +32,19 @@ def _connect_gmail(creds_file, polling: int, max_emails: int):
     from ingestion.gmail_monitor import GmailMonitor
     from ui.utils.session import start_background_sync_thread
 
-    cp = os.path.join(tempfile.gettempdir(), "gmail_credentials.json")
-    with open(cp, "w") as f:
-        _j.dump(_j.loads(creds_file.read()), f)
+    if creds_file:
+        cp = os.path.join(tempfile.gettempdir(), "gmail_credentials.json")
+        with open(cp, "w") as f:
+            _j.dump(_j.loads(creds_file.read()), f)
+        fe = GmailFetcher(credentials_path=cp)
+    else:
+        from ingestion.secrets_helper import get_gmail_credential_paths
+        try:
+            credentials_path, token_path = get_gmail_credential_paths()
+            fe = GmailFetcher(credentials_path=credentials_path, token_path=token_path)
+        except Exception:
+            st.stop()
 
-    fe = GmailFetcher(credentials_path=cp)
     if not fe.authenticate():
         st.error("❌ Authentication failed.")
         return
@@ -358,16 +366,42 @@ with tabs[2]:
             <li>Upload below and click Connect</li>
         </ol></div>""", unsafe_allow_html=True)
         
-        creds = st.file_uploader("Upload credentials.json", type=["json"], key="gmail_creds")
-        ca, cb = st.columns(2)
-        with ca: polling = st.number_input("Polling Interval (s)", 30, 600, 60)
-        with cb: max_f = st.number_input("Max Emails/Check", 1, 50, 10)
-        
-        if creds and st.button("🔗 Connect & Start Monitoring", use_container_width=True):
-            if st.session_state.get("monitoring_started"):
-                st.info("Monitoring already running. Refresh to reconnect.")
-                st.stop()
-            _connect_gmail(creds, int(polling), int(max_f))
+        # Detect if running on Streamlit Cloud
+        is_cloud = "gmail_credentials" in st.secrets if hasattr(st, "secrets") else False
+
+        if is_cloud:
+            st.markdown(f"""
+            <div class="glass-panel" style="border-left: 3px solid {WARNING};">
+                <div style="font-weight:700; color:{TEXT}; margin-bottom:8px;">
+                    Cloud Deployment Detected
+                </div>
+                <div style="color:{TEXT_DIM}; font-size:0.9rem; line-height:1.8;">
+                    Credentials are loaded from <code>Streamlit Secrets</code>.<br>
+                    No file upload needed. Click Connect below to start monitoring.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            ca, cb = st.columns(2)
+            with ca: polling = st.number_input("Polling Interval (s)", 30, 600, 60)
+            with cb: max_f = st.number_input("Max Emails/Check", 1, 50, 10)
+            
+            if st.button("🔗 Connect & Start Monitoring", use_container_width=True):
+                if st.session_state.get("monitoring_started"):
+                    st.info("Monitoring already running. Refresh to reconnect.")
+                    st.stop()
+                _connect_gmail(None, int(polling), int(max_f))
+        else:
+            creds = st.file_uploader("Upload credentials.json", type=["json"], key="gmail_creds")
+            ca, cb = st.columns(2)
+            with ca: polling = st.number_input("Polling Interval (s)", 30, 600, 60)
+            with cb: max_f = st.number_input("Max Emails/Check", 1, 50, 10)
+            
+            if creds and st.button("🔗 Connect & Start Monitoring", use_container_width=True):
+                if st.session_state.get("monitoring_started"):
+                    st.info("Monitoring already running. Refresh to reconnect.")
+                    st.stop()
+                _connect_gmail(creds, int(polling), int(max_f))
 
 
 # ═══════════════════════════════════════════════════════════════════════════ #

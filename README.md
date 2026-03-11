@@ -324,6 +324,8 @@ Contributions are welcome! Please open an issue or submit a pull request.
 5. Open a Pull Request  
 
 ---
+##Hosting 
+The Project is live on https://phishingdetectionsystem-e8zted4pp7clbubh27xouv.streamlit.app/
 
 ## 📄 License
 
